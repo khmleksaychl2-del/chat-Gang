@@ -1,119 +1,185 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat with Friends</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      margin: 0;
-      padding: 0;
-    }
-    #chat-box {
-      height: 70vh;
-      overflow-y: auto;
-      background: white;
-      padding: 10px;
-      border-bottom: 1px solid #ccc;
-    }
-    .message {
-      padding: 5px 10px;
-      margin: 5px 0;
-      border-radius: 10px;
-      background: #e1f5fe;
-      max-width: 80%;
-    }
-    .mine {
-      background: #c8e6c9;
-      margin-left: auto;
-    }
-    #form {
-      display: flex;
-      padding: 10px;
-      background: white;
-    }
-    #message {
-      flex: 1;
-      padding: 10px;
-      font-size: 16px;
-    }
-    #send {
-      background: #4caf50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat App</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #74ABE2, #5563DE);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    color: #fff;
+  }
+  #login {
+    margin: auto;
+    text-align: center;
+  }
+  #login input {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    width: 200px;
+    margin-right: 5px;
+  }
+  #login button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    background: #00C9A7;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #chat {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 10px;
+  }
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+  }
+  .msg {
+    max-width: 70%;
+    padding: 10px;
+    border-radius: 12px;
+    margin: 5px 0;
+    clear: both;
+  }
+  .me {
+    background: #00C9A7;
+    color: #fff;
+    float: right;
+    border-bottom-right-radius: 0;
+  }
+  .other {
+    background: #f1f1f1;
+    color: #000;
+    float: left;
+    border-bottom-left-radius: 0;
+  }
+  #input-area {
+    display: flex;
+    gap: 5px;
+    margin-top: auto;
+  }
+  #message-input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+  }
+  #send-button, #clear-button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #send-button {
+    background: #ff9800;
+    color: #fff;
+  }
+  #clear-button {
+    background: #e74c3c;
+    color: #fff;
+  }
+</style>
 </head>
 <body>
+<div id="login" style="display:none;">
+  <h2>ใส่ชื่อของคุณ</h2>
+  <input type="text" id="name-input" placeholder="ชื่อของคุณ">
+  <button id="join-button">เข้าสู่แชท</button>
+</div>
+<div id="chat" style="display:none;">
+  <div id="messages"></div>
+  <div id="input-area">
+    <input type="text" id="message-input" placeholder="พิมพ์ข้อความ...">
+    <button id="send-button">ส่ง</button>
+    <button id="clear-button">ลบแชท</button>
+  </div>
+</div>
 
-<h2 style="text-align:center;">💬 Chat App</h2>
-<div id="chat-box"></div>
-
-<form id="form">
-  <input type="text" id="message" placeholder="พิมพ์ข้อความ..." required>
-  <button type="submit" id="send">ส่ง</button>
-</form>
-
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-  import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-
-  // Firebase config ของคุณ
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script>
+  // ตั้งค่า Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBPZr1aivETzDN7AJoYJgLxdW-uk2q7oNI",
     authDomain: "chat-app-70717.firebaseapp.com",
+    databaseURL: "https://chat-app-70717-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "chat-app-70717",
     storageBucket: "chat-app-70717.firebasestorage.app",
     messagingSenderId: "710301365664",
     appId: "1:710301365664:web:3f6f0f8bc88e41bba7e0c5"
   };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  let username = localStorage.getItem("chatName");
 
-  const chatBox = document.getElementById("chat-box");
-  const form = document.getElementById("form");
-  const messageInput = document.getElementById("message");
+  const loginDiv = document.getElementById("login");
+  const chatDiv = document.getElementById("chat");
+  const messagesDiv = document.getElementById("messages");
+  const input = document.getElementById("message-input");
+  const sendBtn = document.getElementById("send-button");
+  const clearBtn = document.getElementById("clear-button");
 
-  // แสดงข้อความแบบเรียลไทม์
-  const q = query(collection(db, "messages"), orderBy("timestamp"));
-  onSnapshot(q, (snapshot) => {
-    chatBox.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      const div = document.createElement("div");
-      div.classList.add("message");
-      if (data.user === localStorage.getItem("chatUser")) {
-        div.classList.add("mine");
-      }
-      div.textContent = data.user + ": " + data.text;
-      chatBox.appendChild(div);
-    });
-    chatBox.scrollTop = chatBox.scrollHeight;
-  });
-
-  // ตั้งชื่อผู้ใช้
-  if (!localStorage.getItem("chatUser")) {
-    const name = prompt("ใส่ชื่อของคุณ:");
-    localStorage.setItem("chatUser", name || "ไม่ระบุชื่อ");
+  if (!username) {
+    loginDiv.style.display = "block";
+  } else {
+    chatDiv.style.display = "flex";
   }
 
-  // ส่งข้อความ
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    await addDoc(collection(db, "messages"), {
-      text: messageInput.value,
-      user: localStorage.getItem("chatUser"),
-      timestamp: serverTimestamp()
-    });
-    messageInput.value = "";
+  document.getElementById("join-button").addEventListener("click", () => {
+    const nameInput = document.getElementById("name-input").value.trim();
+    if (nameInput) {
+      username = nameInput;
+      localStorage.setItem("chatName", username);
+      loginDiv.style.display = "none";
+      chatDiv.style.display = "flex";
+    }
+  });
+
+  function renderMessage(data) {
+    const el = document.createElement("div");
+    el.className = "msg " + (data.name === username ? "me" : "other");
+    el.textContent = `${data.name}: ${data.text}`;
+    messagesDiv.appendChild(el);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  db.ref("messages").on("child_added", snap => {
+    const data = snap.val();
+    if (data && data.text) renderMessage(data);
+  });
+
+  function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+    db.ref("messages").push({ name: username, text, ts: Date.now() });
+    input.value = "";
+    input.focus();
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") sendMessage();
+  });
+
+  clearBtn.addEventListener("click", () => {
+    if (confirm("ต้องการลบแชททั้งหมดหรือไม่?")) {
+      db.ref("messages").remove();
+      messagesDiv.innerHTML = "";
+    }
   });
 </script>
-
 </body>
 </html>
