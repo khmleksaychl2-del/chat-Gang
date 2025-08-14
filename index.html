@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Chat with Friends</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    #chat-box {
+      height: 70vh;
+      overflow-y: auto;
+      background: white;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+    .message {
+      padding: 5px 10px;
+      margin: 5px 0;
+      border-radius: 10px;
+      background: #e1f5fe;
+      max-width: 80%;
+    }
+    .mine {
+      background: #c8e6c9;
+      margin-left: auto;
+    }
+    #form {
+      display: flex;
+      padding: 10px;
+      background: white;
+    }
+    #message {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #send {
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h2 style="text-align:center;">💬 Chat App</h2>
+<div id="chat-box"></div>
+
+<form id="form">
+  <input type="text" id="message" placeholder="พิมพ์ข้อความ..." required>
+  <button type="submit" id="send">ส่ง</button>
+</form>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+  // Firebase config ของคุณ
+  const firebaseConfig = {
+    apiKey: "AIzaSyBPZr1aivETzDN7AJoYJgLxdW-uk2q7oNI",
+    authDomain: "chat-app-70717.firebaseapp.com",
+    projectId: "chat-app-70717",
+    storageBucket: "chat-app-70717.firebasestorage.app",
+    messagingSenderId: "710301365664",
+    appId: "1:710301365664:web:3f6f0f8bc88e41bba7e0c5"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const chatBox = document.getElementById("chat-box");
+  const form = document.getElementById("form");
+  const messageInput = document.getElementById("message");
+
+  // แสดงข้อความแบบเรียลไทม์
+  const q = query(collection(db, "messages"), orderBy("timestamp"));
+  onSnapshot(q, (snapshot) => {
+    chatBox.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.classList.add("message");
+      if (data.user === localStorage.getItem("chatUser")) {
+        div.classList.add("mine");
+      }
+      div.textContent = data.user + ": " + data.text;
+      chatBox.appendChild(div);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
+
+  // ตั้งชื่อผู้ใช้
+  if (!localStorage.getItem("chatUser")) {
+    const name = prompt("ใส่ชื่อของคุณ:");
+    localStorage.setItem("chatUser", name || "ไม่ระบุชื่อ");
+  }
+
+  // ส่งข้อความ
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    await addDoc(collection(db, "messages"), {
+      text: messageInput.value,
+      user: localStorage.getItem("chatUser"),
+      timestamp: serverTimestamp()
+    });
+    messageInput.value = "";
+  });
+</script>
+
+</body>
+</html>
