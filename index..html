@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Chat App</title>
+    <style>
+        body { font-family: Arial; background: #f2f2f2; padding: 20px; }
+        #chat { border: 1px solid #ccc; height: 300px; overflow-y: scroll; background: #fff; padding: 10px; }
+        #msg { width: 80%; }
+        button { width: 18%; }
+    </style>
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-database.js";
+
+        // Firebase config
+        const firebaseConfig = {
+          apiKey: "AIzaSyBPZr1aivETzDN7AJoYJgLxdW-uk2q7oNI",
+          authDomain: "chat-app-70717.firebaseapp.com",
+          projectId: "chat-app-70717",
+          storageBucket: "chat-app-70717.appspot.com",
+          messagingSenderId: "710301365664",
+          appId: "1:710301365664:web:3f6f0f8bc88e41bba7e0c5",
+          databaseURL: "https://chat-app-70717-default-rtdb.firebaseio.com/"
+        };
+
+        // Init Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const chatRef = ref(db, "messages");
+
+        // ส่งข้อความ
+        window.send = function() {
+            let msgBox = document.getElementById('msg');
+            if(msgBox.value.trim() !== '') {
+                push(chatRef, msgBox.value);
+                msgBox.value = '';
+            }
+        }
+
+        // รับข้อความใหม่
+        onChildAdded(chatRef, (data) => {
+            let chat = document.getElementById('chat');
+            chat.innerHTML += `<div>${data.val()}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        });
+    </script>
+</head>
+<body>
+    <h2>แชทกับเพื่อน</h2>
+    <div id="chat"></div>
+    <input id="msg" type="text" placeholder="พิมพ์ข้อความ...">
+    <button onclick="send()">ส่ง</button>
+</body>
+</html>
