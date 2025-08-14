@@ -14,10 +14,12 @@
     height: 100vh;
     color: #fff;
   }
+
   #login {
     margin: auto;
     text-align: center;
   }
+
   #login input {
     padding: 10px;
     border-radius: 8px;
@@ -25,6 +27,7 @@
     width: 200px;
     margin-right: 5px;
   }
+
   #login button {
     padding: 10px 15px;
     border: none;
@@ -34,47 +37,75 @@
     font-weight: bold;
     cursor: pointer;
   }
+
   #chat {
     display: flex;
     flex-direction: column;
     flex: 1;
     padding: 10px;
   }
+
   #messages {
     flex: 1;
     overflow-y: auto;
     padding: 10px;
   }
+
   .msg {
     max-width: 70%;
     padding: 10px;
     border-radius: 12px;
     margin: 5px 0;
     clear: both;
+    position: relative;
   }
+
   .me {
     background: #00C9A7;
     color: #fff;
     float: right;
     border-bottom-right-radius: 0;
   }
+
   .other {
     background: #f1f1f1;
     color: #000;
     float: left;
     border-bottom-left-radius: 0;
   }
+
+  .edit-btn, .delete-btn {
+    position: absolute;
+    bottom: 2px;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+
+  .edit-btn {
+    right: 25px;
+    color: yellow;
+  }
+
+  .delete-btn {
+    right: 5px;
+    color: red;
+  }
+
   #input-area {
     display: flex;
     gap: 5px;
     margin-top: auto;
   }
+
   #message-input {
     flex: 1;
     padding: 10px;
     border-radius: 8px;
     border: none;
   }
+
   #send-button, #clear-button {
     padding: 10px 15px;
     border: none;
@@ -82,10 +113,12 @@
     font-weight: bold;
     cursor: pointer;
   }
+
   #send-button {
     background: #ff9800;
     color: #fff;
   }
+
   #clear-button {
     background: #e74c3c;
     color: #fff;
@@ -93,17 +126,19 @@
 </style>
 </head>
 <body>
-<div id="login" style="display:none;">
+
+<div id="login">
   <h2>ใส่ชื่อของคุณ</h2>
   <input type="text" id="name-input" placeholder="ชื่อของคุณ">
   <button id="join-button">เข้าสู่แชท</button>
 </div>
+
 <div id="chat" style="display:none;">
   <div id="messages"></div>
   <div id="input-area">
     <input type="text" id="message-input" placeholder="พิมพ์ข้อความ...">
     <button id="send-button">ส่ง</button>
-    <button id="clear-button">ลบแชท</button>
+    <button id="clear-button" style="display:none;">ลบแชททั้งหมด</button>
   </div>
 </div>
 
@@ -123,8 +158,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  let username = localStorage.getItem("chatName");
-
+  let username = "";
   const loginDiv = document.getElementById("login");
   const chatDiv = document.getElementById("chat");
   const messagesDiv = document.getElementById("messages");
@@ -132,34 +166,76 @@
   const sendBtn = document.getElementById("send-button");
   const clearBtn = document.getElementById("clear-button");
 
-  if (!username) {
-    loginDiv.style.display = "block";
-  } else {
-    chatDiv.style.display = "flex";
-  }
-
   document.getElementById("join-button").addEventListener("click", () => {
     const nameInput = document.getElementById("name-input").value.trim();
     if (nameInput) {
       username = nameInput;
-      localStorage.setItem("chatName", username);
       loginDiv.style.display = "none";
       chatDiv.style.display = "flex";
+      if (username.toLowerCase() === "admin") {
+        clearBtn.style.display = "inline-block";
+      }
     }
   });
 
-  function renderMessage(data) {
+  function renderMessage(key, data) {
     const el = document.createElement("div");
     el.className = "msg " + (data.name === username ? "me" : "other");
-    el.textContent = `${data.name}: ${data.text}`;
+    el.innerHTML = `<strong>${data.name}:</strong> ${data.text}`;
+    
+    // ปุ่มแก้ไข
+    if (data.name === username || username.toLowerCase() === "admin") {
+      const editBtn = document.createElement("span");
+      editBtn.className = "edit-btn";
+      editBtn.textContent = "✏";
+      editBtn.onclick = () => editMessage(key, data.text);
+      el.appendChild(editBtn);
+    }
+
+    // ปุ่มลบ
+    if (data.name === username || username.toLowerCase() === "admin") {
+      const deleteBtn = document.createElement("span");
+      deleteBtn.className = "delete-btn";
+      deleteBtn.textContent = "🗑";
+      deleteBtn.onclick = () => deleteMessage(key);
+      el.appendChild(deleteBtn);
+    }
+
     messagesDiv.appendChild(el);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
+  function editMessage(key, oldText) {
+    const newText = prompt("แก้ไขข้อความ:", oldText);
+    if (newText !== null && newText.trim() !== "") {
+      db.ref("messages/" + key).update({ text: newText });
+    }
+  }
+
+  function deleteMessage(key) {
+    if (confirm("ต้องการลบข้อความนี้หรือไม่?")) {
+      db.ref("messages/" + key).remove();
+    }
+  }
+
   db.ref("messages").on("child_added", snap => {
-    const data = snap.val();
-    if (data && data.text) renderMessage(data);
+    renderMessage(snap.key, snap.val());
   });
+
+  db.ref("messages").on("child_changed", snap => {
+    refreshMessages();
+  });
+
+  db.ref("messages").on("child_removed", snap => {
+    refreshMessages();
+  });
+
+  function refreshMessages() {
+    messagesDiv.innerHTML = "";
+    db.ref("messages").once("value", snapshot => {
+      snapshot.forEach(s => renderMessage(s.key, s.val()));
+    });
+  }
 
   function sendMessage() {
     const text = input.value.trim();
@@ -175,9 +251,10 @@
   });
 
   clearBtn.addEventListener("click", () => {
-    if (confirm("ต้องการลบแชททั้งหมดหรือไม่?")) {
-      db.ref("messages").remove();
-      messagesDiv.innerHTML = "";
+    if (username.toLowerCase() === "admin") {
+      if (confirm("ต้องการลบแชททั้งหมดหรือไม่?")) {
+        db.ref("messages").remove();
+      }
     }
   });
 </script>
